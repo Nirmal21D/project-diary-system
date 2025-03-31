@@ -281,7 +281,7 @@ ob_start();
                 <li class="sidebar-heading nav-text">Diary</li>
                 
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php?page=view_diary_entry">
+                    <a class="nav-link" href="index.php?page=diary_entries">
                         <span class="icon"><i class="fas fa-book"></i></span>
                         <span class="nav-text">All Entries</span>
                     </a>
@@ -296,19 +296,7 @@ ob_start();
                 
                 <li class="sidebar-heading nav-text">Account</li>
                 
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php?page=profile">
-                        <span class="icon"><i class="fas fa-user"></i></span>
-                        <span class="nav-text">My Profile</span>
-                    </a>
-                </li>
-                
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php?page=settings">
-                        <span class="icon"><i class="fas fa-cog"></i></span>
-                        <span class="nav-text">Settings</span>
-                    </a>
-                </li>
+               
                 
                 <li class="nav-item">
                     <a class="nav-link" href="index.php?page=logout">

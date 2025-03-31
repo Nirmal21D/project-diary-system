@@ -60,9 +60,7 @@
                             <i class="fas fa-book"></i> Diary Entries
                         </a>
                         
-                        <a href="index.php?page=teacher_pending_reviews" class="list-group-item list-group-item-action <?php echo $page === 'teacher_pending_reviews' ? 'active' : ''; ?>">
-                            <i class="fas fa-clipboard-check"></i> Pending Reviews
-                        </a>
+                       
                         
                         <a href="index.php?page=logout" class="list-group-item list-group-item-action text-danger">
                             <i class="fas fa-sign-out-alt"></i> Logout

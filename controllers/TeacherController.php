@@ -1620,5 +1620,362 @@ class TeacherController {
             return false;
         }
     }
+
+    /**
+     * Get dashboard data for a teacher
+     * 
+     * @param int $teacherId The ID of the teacher
+     * @return array Dashboard data
+     */
+    public function getDashboardData($teacherId) {
+        try {
+            $data = [];
+            
+            // Get count of active projects
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) AS count
+                FROM project_groups
+                WHERE teacher_id = :teacher_id AND status = 'active'
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            $data['projectsCount'] = $stmt->fetchColumn();
+            
+            // Get count of students in teacher's projects
+            $stmt = $this->db->prepare("
+                SELECT COUNT(DISTINCT pgm.user_id) AS count
+                FROM project_group_members pgm
+                JOIN project_groups pg ON pgm.project_group_id = pg.id
+                WHERE pg.teacher_id = :teacher_id
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            $data['studentsCount'] = $stmt->fetchColumn();
+            
+            // Get count of pending reviews
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) AS count
+                FROM diary_entries d
+                JOIN project_groups pg ON d.project_group_id = pg.id
+                WHERE pg.teacher_id = :teacher_id AND d.reviewed = 0
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            $data['pendingReviewsCount'] = $stmt->fetchColumn();
+            
+            // Get recent diary entries
+            $stmt = $this->db->prepare("
+                SELECT d.*, pg.name AS project_name, u.name AS student_name
+                FROM diary_entries d
+                JOIN project_groups pg ON d.project_group_id = pg.id
+                JOIN users u ON d.user_id = u.id
+                WHERE pg.teacher_id = :teacher_id
+                ORDER BY d.created_at DESC
+                LIMIT 5
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            $data['recentEntries'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Get project groups with members count
+            $stmt = $this->db->prepare("
+                SELECT pg.*
+                FROM project_groups pg
+                WHERE pg.teacher_id = :teacher_id
+                ORDER BY pg.created_at DESC
+                LIMIT 5
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            $projectGroups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // For each project group, get members
+            foreach ($projectGroups as &$group) {
+                $stmt = $this->db->prepare("
+                    SELECT u.id, u.name
+                    FROM project_group_members pgm
+                    JOIN users u ON pgm.user_id = u.id
+                    WHERE pgm.project_group_id = :group_id
+                ");
+                $stmt->bindParam(':group_id', $group['id'], PDO::PARAM_INT);
+                $stmt->execute();
+                $group['members'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            $data['projectGroups'] = $projectGroups;
+            
+            return $data;
+        } catch (PDOException $e) {
+            error_log("Error getting teacher dashboard data: " . $e->getMessage());
+            throw new Exception("Database error while retrieving dashboard data");
+        }
+    }
+
+    /**
+     * Get all students assigned to a teacher's projects
+     * 
+     * @param int $teacherId The ID of the teacher
+     * @return array An array of students with their projects
+     */
+    public function getMyStudents($teacherId) {
+        try {
+            // Get all students in teacher's projects
+            $stmt = $this->db->prepare("
+                SELECT DISTINCT u.id, u.name, u.email, u.created_at
+                FROM users u
+                JOIN project_group_members pgm ON u.id = pgm.user_id
+                JOIN project_groups pg ON pgm.project_group_id = pg.id
+                WHERE pg.teacher_id = :teacher_id AND u.role = 'student'
+                ORDER BY u.name
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // For each student, get their projects, last activity, and entry counts
+            foreach ($students as &$student) {
+                // Get projects
+                $stmt = $this->db->prepare("
+                    SELECT pg.id, pg.name, pg.description, pg.status, pgm.joined_at as joined_date
+                    FROM project_groups pg
+                    JOIN project_group_members pgm ON pg.id = pgm.project_group_id
+                    WHERE pgm.user_id = :student_id AND pg.teacher_id = :teacher_id
+                    ORDER BY pg.name
+                ");
+                $stmt->bindParam(':student_id', $student['id'], PDO::PARAM_INT);
+                $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+                $stmt->execute();
+                $student['projects'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Get last activity (most recent diary entry)
+                $stmt = $this->db->prepare("
+                    SELECT MAX(created_at) as last_activity
+                    FROM diary_entries
+                    WHERE user_id = :student_id
+                ");
+                $stmt->bindParam(':student_id', $student['id'], PDO::PARAM_INT);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $student['last_activity'] = $result['last_activity'];
+                
+                // Get total entries count
+                $stmt = $this->db->prepare("
+                    SELECT COUNT(*) as total
+                    FROM diary_entries d
+                    JOIN project_groups pg ON d.project_group_id = pg.id
+                    WHERE d.user_id = :student_id AND pg.teacher_id = :teacher_id
+                ");
+                $stmt->bindParam(':student_id', $student['id'], PDO::PARAM_INT);
+                $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+                $stmt->execute();
+                $student['total_entries'] = $stmt->fetchColumn();
+                
+                // Get pending reviews count
+                $stmt = $this->db->prepare("
+                    SELECT COUNT(*) as pending
+                    FROM diary_entries d
+                    JOIN project_groups pg ON d.project_group_id = pg.id
+                    WHERE d.user_id = :student_id AND pg.teacher_id = :teacher_id AND d.reviewed = 0
+                ");
+                $stmt->bindParam(':student_id', $student['id'], PDO::PARAM_INT);
+                $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+                $stmt->execute();
+                $student['pending_reviews'] = $stmt->fetchColumn();
+            }
+            
+            return $students;
+        } catch (PDOException $e) {
+            error_log("Error getting students: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Check if a teacher has permission to view a student
+     * 
+     * @param int $studentId The ID of the student
+     * @param int $teacherId The ID of the teacher
+     * @return bool Whether the teacher can view this student
+     */
+    public function canViewStudent($studentId, $teacherId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as count
+                FROM project_group_members pgm
+                JOIN project_groups pg ON pgm.project_group_id = pg.id
+                WHERE pgm.user_id = :student_id AND pg.teacher_id = :teacher_id
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log("Error checking student permission: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get detailed information about a student
+     * 
+     * @param int $studentId The ID of the student
+     * @return array Student details
+     */
+    public function getStudentWithDetails($studentId) {
+        try {
+            // Get basic student info
+            $stmt = $this->db->prepare("
+                SELECT id, name, email, created_at
+                FROM users
+                WHERE id = :student_id AND role = 'student'
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $student = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$student) {
+                return null;
+            }
+            
+            // Get last activity
+            $stmt = $this->db->prepare("
+                SELECT MAX(created_at) as last_activity
+                FROM diary_entries
+                WHERE user_id = :student_id
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $student['last_activity'] = $result['last_activity'];
+            
+            // Get total entries
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as total
+                FROM diary_entries
+                WHERE user_id = :student_id
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->execute();
+            $student['total_entries'] = $stmt->fetchColumn();
+            
+            // Get pending reviews
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as pending
+                FROM diary_entries
+                WHERE user_id = :student_id AND reviewed = 0
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->execute();
+            $student['pending_reviews'] = $stmt->fetchColumn();
+            
+            return $student;
+        } catch (PDOException $e) {
+            error_log("Error getting student details: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Get projects assigned to a student
+     * 
+     * @param int $studentId The ID of the student
+     * @return array An array of projects
+     */
+    public function getStudentProjects($studentId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT pg.id, pg.name, pg.description, pg.status, pg.start_date, pg.end_date,
+                       pgm.joined_at as joined_date
+                FROM project_groups pg
+                JOIN project_group_members pgm ON pg.id = pgm.project_group_id
+                WHERE pgm.user_id = :student_id
+                ORDER BY pg.name
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting student projects: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get diary entries for a specific student
+     * 
+     * @param int $studentId The ID of the student
+     * @param int $limit Optional limit on number of entries to return
+     * @param int $projectId Optional project ID to filter by
+     * @return array An array of diary entries
+     */
+    public function getStudentDiaryEntries($studentId, $limit = null, $projectId = null) {
+        try {
+            $sql = "
+                SELECT d.*, pg.name as project_name 
+                FROM diary_entries d
+                JOIN project_groups pg ON d.project_group_id = pg.id
+                WHERE d.user_id = :student_id
+            ";
+            
+            $params = [':student_id' => $studentId];
+            
+            if ($projectId !== null) {
+                $sql .= " AND d.project_group_id = :project_id";
+                $params[':project_id'] = $projectId;
+            }
+            
+            $sql .= " ORDER BY d.entry_date DESC";
+            
+            if ($limit !== null) {
+                $sql .= " LIMIT :limit";
+                $params[':limit'] = $limit;
+            }
+            
+            $stmt = $this->db->prepare($sql);
+            
+            foreach ($params as $param => $value) {
+                if ($param === ':limit') {
+                    $stmt->bindValue($param, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($param, $value, PDO::PARAM_INT);
+                }
+            }
+            
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting student diary entries: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get projects for a teacher
+     * 
+     * @param int $teacherId The ID of the teacher
+     * @return array An array of projects
+     */
+    public function getMyProjects($teacherId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id, name, description, status, start_date, end_date, created_at
+                FROM project_groups
+                WHERE teacher_id = :teacher_id
+                ORDER BY name
+            ");
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting teacher projects: " . $e->getMessage());
+            return [];
+        }
+    }
 }
 ?>

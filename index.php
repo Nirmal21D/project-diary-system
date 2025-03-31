@@ -40,7 +40,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
 $page = $_GET['page'] ?? 'dashboard';
 
 // Fix all dairy/diary typos at once
-$diaryPages = ['view_diary_entry', 'diary_entries', 'add_diary_entry', 'edit_diary_entry', 'delete_diary_entry'];
+$diaryPages = ['view_diary_entry', 'diary_entries', 'create_diary_entry', 'edit_diary_entry', 'delete_diary_entry'];
 $dairyPages = ['view_dairy_entry', 'dairy_entries', 'add_dairy_entry', 'edit_dairy_entry', 'delete_dairy_entry'];
 
 // Check if the current page is any of the misspelled "dairy" pages
@@ -162,6 +162,10 @@ else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'teach
             $pageTitle = 'My Students';
             $contentView = BASE_PATH . '/views/teacher/students.php';
             break;
+        case 'view_student':
+            $pageTitle = 'Student Profile';
+            $contentView = BASE_PATH . '/views/teacher/view_student.php';
+            break;
         case 'student_details':
             $pageTitle = 'Student Details';
             $contentView = BASE_PATH . '/views/teacher/student_details.php';
@@ -178,10 +182,7 @@ else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'teach
             $pageTitle = 'View Student Diary Entry';
             $contentView = BASE_PATH . '/views/teacher/view_diary_entry.php';
             break;
-        case 'teacher_pending_reviews':
-            $pageTitle = 'Pending Reviews';
-            $contentView = BASE_PATH . '/views/teacher/pending_reviews.php';
-            break;
+       
         case 'teacher_reports':
             $pageTitle = 'Reports';
             $contentView = BASE_PATH . '/views/teacher/reports.php';
@@ -273,9 +274,9 @@ else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'stude
             $pageTitle = 'Edit Diary Entry';
             $contentView = BASE_PATH . '/views/student/edit_diary_entry.php';
             break;
-        case 'add_diary_entry':
+        case 'create_diary_entry':
             $pageTitle = 'Add Diary Entry';
-            $contentView = BASE_PATH . '/views/student/add_diary_entry.php';
+            $contentView = BASE_PATH . '/views/student/create_diary_entry.php';
             break;
         case 'pending_reviews':
             $pageTitle = 'Pending Reviews';

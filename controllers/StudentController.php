@@ -549,7 +549,7 @@ class StudentController {
         try {
             $data = [];
             
-            // Get projects - from the projects table
+            // Try to get projects from the projects table first (newer schema)
             $projectsQuery = "
                 SELECT p.id, p.name, p.description, p.status, p.teacher_id, u.name as teacher_name
                 FROM projects p
@@ -562,13 +562,33 @@ class StudentController {
             $stmt = $this->db->prepare($projectsQuery);
             $stmt->bindParam(':pattern', $pattern, PDO::PARAM_STR);
             $stmt->execute();
-            $data['projects'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Get recent diary entries - join with project_groups and projects
+            // If no projects found in projects table, try project_groups table (older schema)
+            if (empty($projects)) {
+                $groupsQuery = "
+                    SELECT pg.id, pg.name, pg.description, pg.status, pg.teacher_id, 
+                           u.name as teacher_name
+                    FROM project_groups pg
+                    JOIN project_group_members pgm ON pg.id = pgm.project_group_id
+                    JOIN users u ON pg.teacher_id = u.id
+                    WHERE pgm.user_id = :student_id
+                    ORDER BY pg.name ASC
+                ";
+                
+                $stmt = $this->db->prepare($groupsQuery);
+                $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+                $stmt->execute();
+                $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            $data['projects'] = $projects;
+            
+            // Get recent diary entries - dynamically determine table structure
             $entriesQuery = "
                 SELECT d.*, pg.name as project_name 
                 FROM diary_entries d
-                JOIN project_groups pg ON d.project_group_id = pg.id
+                LEFT JOIN project_groups pg ON d.project_group_id = pg.id
                 WHERE d.user_id = :student_id
                 ORDER BY d.created_at DESC
                 LIMIT 5
@@ -583,7 +603,7 @@ class StudentController {
             $pendingQuery = "
                 SELECT d.*, pg.name as project_name 
                 FROM diary_entries d
-                JOIN project_groups pg ON d.project_group_id = pg.id
+                LEFT JOIN project_groups pg ON d.project_group_id = pg.id
                 WHERE d.user_id = :student_id AND d.reviewed = 0
                 ORDER BY d.created_at DESC
             ";
