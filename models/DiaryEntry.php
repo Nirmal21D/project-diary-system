@@ -1,11 +1,11 @@
 <?php
 
 class DiaryEntry {
-    private $id;
-    private $group_id;
-    private $user_id;
-    private $content;
-    private $status;
+    public $id;
+    public $group_id;
+    public $user_id;
+    public $content;
+    public $status;
 
     public function __construct($group_id, $user_id, $content, $status = 'pending') {
         $this->group_id = $group_id;

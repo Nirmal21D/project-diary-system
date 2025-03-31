@@ -54,8 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'id' => $projectId,
         'name' => trim($_POST['name'] ?? ''),
         'description' => trim($_POST['description'] ?? ''),
-        'start_date' => $_POST['start_date'] ?? '',
-        'end_date' => $_POST['end_date'] ?? '',
         'status' => $_POST['status'] ?? 'pending',
         'teacher_id' => $teacherId
     ];
@@ -72,16 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($projectData['description'])) {
         $errors[] = 'Project description is required.';
-    }
-    
-    if (empty($projectData['start_date'])) {
-        $errors[] = 'Start date is required.';
-    }
-    
-    if (empty($projectData['end_date'])) {
-        $errors[] = 'End date is required.';
-    } else if ($projectData['end_date'] < $projectData['start_date']) {
-        $errors[] = 'End date cannot be before start date.';
     }
     
     if (!empty($errors)) {
@@ -160,19 +148,6 @@ if (isset($_SESSION['error_message']) && empty($errorMessage)) {
                             <label for="description" class="form-label">Project Description *</label>
                             <textarea class="form-control" id="description" name="description" rows="4" 
                                 required><?php echo htmlspecialchars($project['description'] ?? ''); ?></textarea>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="start_date" class="form-label">Start Date *</label>
-                                <input type="date" class="form-control" id="start_date" name="start_date" 
-                                    value="<?php echo $project['start_date'] ?? ''; ?>" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="end_date" class="form-label">End Date *</label>
-                                <input type="date" class="form-control" id="end_date" name="end_date" 
-                                    value="<?php echo $project['end_date'] ?? ''; ?>" required>
-                            </div>
                         </div>
                         
                         <div class="mb-3">

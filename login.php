@@ -1,6 +1,14 @@
 <?php
-require_once 'config/config.php';
+// Start or resume the session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Include database configuration and get connection
 require_once 'config/database.php';
+$pdo = getDbConnection();
+
+require_once 'config/config.php';
 require_once 'controllers/AuthController.php';
 
 $authController = new AuthController($pdo);

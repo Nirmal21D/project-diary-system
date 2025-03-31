@@ -358,90 +358,79 @@ class TeacherController {
     
     /**
      * Create a new project
-     * @param array $projectData Project data
-     * @return int|bool New project ID or false if failed
+     * 
+     * @param array $data Project data
+     * @return int|false Project ID on success, false on failure
      */
-    public function createProject($projectData) {
+    public function createProject($data) {
         try {
-            $stmt = $this->db->prepare("
-                INSERT INTO project_groups (
-                    name, description, start_date, end_date, 
-                    status, teacher_id, created_at, updated_at
-                ) VALUES (
-                    :name, :description, :start_date, :end_date,
-                    :status, :teacher_id, NOW(), NOW()
+            // UPDATED: Removed start_date and end_date from columns list
+            $query = "
+                INSERT INTO projects (
+                    name, 
+                    description, 
+                    status, 
+                    teacher_id, 
+                    student_ids, 
+                    created_at
                 )
-            ");
+                VALUES (
+                    :name, 
+                    :description, 
+                    :status, 
+                    :teacher_id, 
+                    :student_ids, 
+                    NOW()
+                )
+            ";
             
-            $stmt->bindParam(':name', $projectData['name']);
-            $stmt->bindParam(':description', $projectData['description']);
-            $stmt->bindParam(':start_date', $projectData['start_date']);
-            $stmt->bindParam(':end_date', $projectData['end_date']);
-            $stmt->bindParam(':status', $projectData['status']);
-            $stmt->bindParam(':teacher_id', $projectData['teacher_id']);
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':name', $data['name'], PDO::PARAM_STR);
+            $stmt->bindParam(':description', $data['description'], PDO::PARAM_STR);
+            $stmt->bindParam(':status', $data['status'], PDO::PARAM_STR);
+            $stmt->bindParam(':teacher_id', $data['teacher_id'], PDO::PARAM_INT);
+            $stmt->bindParam(':student_ids', $data['student_ids'], PDO::PARAM_STR);
             
             $stmt->execute();
             return $this->db->lastInsertId();
         } catch (PDOException $e) {
-            error_log("Error creating project: " . $e->getMessage());
+            error_log("Database error in createProject: " . $e->getMessage());
             return false;
         }
     }
     
     /**
      * Update an existing project
-     * @param array $projectData Project data
-     * @param array $studentIds Array of student IDs to assign
-     * @return bool|string Success status or error message
+     * 
+     * @param int $projectId Project ID
+     * @param array $data Project data
+     * @return bool Success or failure
      */
-    public function updateProject($projectData, $studentIds) {
+    public function updateProject($projectId, $data) {
         try {
-            // First verify ownership
-            $stmt = $this->db->prepare("
-                SELECT teacher_id FROM projects
-                WHERE id = :project_id
-            ");
-            $stmt->bindParam(':project_id', $projectData['id']);
-            $stmt->execute();
-            
-            $project = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$project || $project['teacher_id'] != $projectData['teacher_id']) {
-                return "You don't have permission to update this project.";
-            }
-            
-            // Update project data
-            $stmt = $this->db->prepare("
-                UPDATE projects
-                SET name = :name,
-                    description = :description,
-                    start_date = :start_date,
-                    end_date = :end_date,
+            // UPDATED: Removed start_date and end_date from SET clause
+            $query = "
+                UPDATE projects 
+                SET name = :name, 
+                    description = :description, 
                     status = :status,
                     student_ids = :student_ids,
                     updated_at = NOW()
                 WHERE id = :project_id
-            ");
+            ";
             
-            // Serialize student IDs
-            $serializedStudentIds = json_encode($studentIds);
-            
-            $stmt->bindParam(':name', $projectData['name']);
-            $stmt->bindParam(':description', $projectData['description']);
-            $stmt->bindParam(':start_date', $projectData['start_date']);
-            $stmt->bindParam(':end_date', $projectData['end_date']);
-            $stmt->bindParam(':status', $projectData['status']);
-            $stmt->bindParam(':student_ids', $serializedStudentIds);
-            $stmt->bindParam(':project_id', $projectData['id']);
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':project_id', $projectId, PDO::PARAM_INT);
+            $stmt->bindParam(':name', $data['name'], PDO::PARAM_STR);
+            $stmt->bindParam(':description', $data['description'], PDO::PARAM_STR);
+            $stmt->bindParam(':status', $data['status'], PDO::PARAM_STR);
+            $stmt->bindParam(':student_ids', $data['student_ids'], PDO::PARAM_STR);
             
             $stmt->execute();
-            
-            return true;
+            return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
-            error_log("Error updating project: " . $e->getMessage());
-            return "Database error: " . $e->getMessage();
-        } catch (Exception $e) {
-            error_log("Exception updating project: " . $e->getMessage());
-            return "Error: " . $e->getMessage();
+            error_log("Database error in updateProject: " . $e->getMessage());
+            return false;
         }
     }
     
@@ -501,18 +490,17 @@ class TeacherController {
             // Create the project
             $stmt = $this->db->prepare("
                 INSERT INTO project_groups (
-                    name, description, start_date, end_date, 
+                    name, description,  
                     status, teacher_id, created_at, updated_at
                 ) VALUES (
-                    :name, :description, :start_date, :end_date,
+                    :name, :description,
                     :status, :teacher_id, NOW(), NOW()
                 )
             ");
             
             $stmt->bindParam(':name', $projectData['name']);
             $stmt->bindParam(':description', $projectData['description']);
-            $stmt->bindParam(':start_date', $projectData['start_date']);
-            $stmt->bindParam(':end_date', $projectData['end_date']);
+           
             $stmt->bindParam(':status', $projectData['status']);
             $stmt->bindParam(':teacher_id', $projectData['teacher_id']);
             
@@ -532,29 +520,6 @@ class TeacherController {
                 $stmt->bindParam(':project_id', $projectId);
                 $stmt->bindParam(':student_id', $studentId);
                 $stmt->execute();
-            }
-            
-            // Create notification for each student (if notifications table exists)
-            if ($this->tableExists('notifications')) {
-                $stmt = $this->db->prepare("
-                    INSERT INTO notifications (
-                        user_id, title, message, link, created_at, is_read
-                    ) VALUES (
-                        :user_id, :title, :message, :link, NOW(), 0
-                    )
-                ");
-                
-                $title = "New Project Assignment";
-                $message = "You have been assigned to a new project: " . $projectData['name'];
-                $link = "index.php?page=view_project&id=" . $projectId;
-                
-                foreach ($studentIds as $studentId) {
-                    $stmt->bindParam(':user_id', $studentId);
-                    $stmt->bindParam(':title', $title);
-                    $stmt->bindParam(':message', $message);
-                    $stmt->bindParam(':link', $link);
-                    $stmt->execute();
-                }
             }
             
             $this->db->commit();
@@ -582,7 +547,7 @@ class TeacherController {
             }
             
             // Verify all required project data exists
-            $requiredFields = ['name', 'description', 'start_date', 'end_date', 'teacher_id'];
+            $requiredFields = ['name', 'description', 'teacher_id'];
             foreach ($requiredFields as $field) {
                 if (!isset($projectData[$field]) || empty($projectData[$field])) {
                     return ['success' => false, 'error' => "Missing required field: {$field}"];
@@ -619,26 +584,23 @@ class TeacherController {
             
             // Create the project
             $sql = "INSERT INTO project_groups (
-                    name, description, start_date, end_date, 
+                    name, description, 
                     status, teacher_id, created_at, updated_at
                 ) VALUES (
-                    :name, :description, :start_date, :end_date,
+                    :name, :description, 
                     :status, :teacher_id, NOW(), NOW()
                 )";
                 
             // Debug SQL
             $debugSql = str_replace(':name', "'".$projectData['name']."'", $sql);
             $debugSql = str_replace(':description', "'".$projectData['description']."'", $debugSql);
-            $debugSql = str_replace(':start_date', "'".$projectData['start_date']."'", $debugSql);
-            $debugSql = str_replace(':end_date', "'".$projectData['end_date']."'", $debugSql);
+            
             $debugSql = str_replace(':status', "'".$projectData['status']."'", $debugSql);
             $debugSql = str_replace(':teacher_id', $projectData['teacher_id'], $debugSql);
             
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':name', $projectData['name']);
             $stmt->bindParam(':description', $projectData['description']);
-            $stmt->bindParam(':start_date', $projectData['start_date']);
-            $stmt->bindParam(':end_date', $projectData['end_date']);
             $stmt->bindParam(':status', $projectData['status']);
             $stmt->bindParam(':teacher_id', $projectData['teacher_id']);
             
@@ -707,9 +669,7 @@ class TeacherController {
                     CREATE TABLE projects (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         name VARCHAR(255) NOT NULL,
-                        description TEXT,
-                        start_date DATE,
-                        end_date DATE,
+                        description TEXT,           
                         status VARCHAR(50) DEFAULT 'pending',
                         teacher_id INT NOT NULL,
                         teacher_info TEXT,
@@ -733,18 +693,17 @@ class TeacherController {
             // Insert project with student IDs and teacher info in single table
             $stmt = $this->db->prepare("
                 INSERT INTO projects (
-                    name, description, start_date, end_date, 
+                    name, description, 
                     status, teacher_id, teacher_info, student_ids, created_at, updated_at
                 ) VALUES (
-                    :name, :description, :start_date, :end_date,
+                    :name, :description,
                     :status, :teacher_id, :teacher_info, :student_ids, NOW(), NOW()
                 )
             ");
             
             $stmt->bindParam(':name', $projectData['name']);
             $stmt->bindParam(':description', $projectData['description']);
-            $stmt->bindParam(':start_date', $projectData['start_date']);
-            $stmt->bindParam(':end_date', $projectData['end_date']);
+           
             $stmt->bindParam(':status', $projectData['status']);
             $stmt->bindParam(':teacher_id', $projectData['teacher_id']);
             $stmt->bindParam(':teacher_info', $teacherInfoJson);
@@ -807,8 +766,6 @@ class TeacherController {
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         name VARCHAR(255) NOT NULL,
                         description TEXT,
-                        start_date DATE,
-                        end_date DATE,
                         status VARCHAR(50) DEFAULT 'pending',
                         teacher_id INT NOT NULL,
                         teacher_name VARCHAR(255),
@@ -839,13 +796,7 @@ class TeacherController {
             }
             
             // Add date range filter
-            if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
-                $sql .= " AND ((start_date BETWEEN :date_from AND :date_to) OR 
-                               (end_date BETWEEN :date_from AND :date_to) OR
-                               (start_date <= :date_from AND end_date >= :date_to))";
-                $params[':date_from'] = $filters['date_from'];
-                $params[':date_to'] = $filters['date_to'];
-            }
+           
             
             $sql .= " ORDER BY created_at DESC";
             
@@ -976,8 +927,6 @@ class TeacherController {
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         name VARCHAR(255) NOT NULL,
                         description TEXT,
-                        start_date DATE,
-                        end_date DATE,
                         status VARCHAR(50) DEFAULT 'pending',
                         teacher_id INT NOT NULL,
                         teacher_info TEXT,
@@ -1184,16 +1133,6 @@ class TeacherController {
             
             $result = $stmt->execute();
             
-            // If successful, create notification for student
-            if ($result) {
-                $this->createNotification(
-                    $entry['student_id'],
-                    "Feedback Received",
-                    "Your teacher has provided feedback on your diary entry: " . $entry['title'],
-                    "index.php?page=view_diary_entry&id=" . $entryId
-                );
-            }
-            
             return $result;
         } catch (PDOException $e) {
             error_log("Error providing feedback: " . $e->getMessage());
@@ -1202,44 +1141,42 @@ class TeacherController {
     }
 
     /**
-     * Create a notification
-     * @param int $userId User ID
-     * @param string $title Notification title
-     * @param string $message Notification message
-     * @param string $link Notification link
-     * @return bool Success status
+     * Review a student's diary entry
+     * 
+     * @param int $entryId The ID of the diary entry
+     * @param string $feedback The teacher's feedback
+     * @param int $teacherId The ID of the teacher
+     * @return bool Whether the operation was successful
      */
-    public function createNotification($userId, $title, $message, $link) {
+    public function reviewDiaryEntry($entryId, $feedback, $teacherId) {
         try {
-            // Check if notifications table exists
-            if (!$this->tableExists('notifications')) {
-                // Create notifications table
-                $this->db->exec("
-                    CREATE TABLE notifications (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        user_id INT NOT NULL,
-                        title VARCHAR(255) NOT NULL,
-                        message TEXT NOT NULL,
-                        link VARCHAR(255) NULL,
-                        is_read TINYINT(1) DEFAULT 0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                ");
+            // Get current timestamp for reviewed_at
+            $now = date('Y-m-d H:i:s');
+            
+            // Update the diary entry to mark it as reviewed
+            $stmt = $this->db->prepare("
+                UPDATE diary_entries 
+                SET reviewed = 1, 
+                    feedback = :feedback, 
+                    reviewer_id = :teacher_id,
+                    reviewed_at = :reviewed_at
+                WHERE id = :entry_id
+            ");
+            $stmt->bindParam(':feedback', $feedback);
+            $stmt->bindParam(':teacher_id', $teacherId, PDO::PARAM_INT);
+            $stmt->bindParam(':entry_id', $entryId, PDO::PARAM_INT);
+            $stmt->bindParam(':reviewed_at', $now);
+            
+            $result = $stmt->execute();
+            
+            if ($result) {
+                // Log successful review
+                error_log("Diary entry ID $entryId successfully reviewed by teacher ID $teacherId");
             }
             
-            $stmt = $this->db->prepare("
-                INSERT INTO notifications (user_id, title, message, link, created_at)
-                VALUES (:user_id, :title, :message, :link, NOW())
-            ");
-            
-            $stmt->bindParam(':user_id', $userId);
-            $stmt->bindParam(':title', $title);
-            $stmt->bindParam(':message', $message);
-            $stmt->bindParam(':link', $link);
-            
-            return $stmt->execute();
+            return $result;
         } catch (PDOException $e) {
-            error_log("Error creating notification: " . $e->getMessage());
+            error_log("Error reviewing diary entry: " . $e->getMessage());
             return false;
         }
     }
@@ -1547,6 +1484,139 @@ class TeacherController {
             return $stmt->execute();
         } catch (PDOException $e) {
             error_log("Error submitting feedback: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Handle project creation
+     * @param array $postData Form data
+     * @param int $teacherId Teacher ID
+     * @return array Result with success flag and message
+     */
+    public function handleCreateProject($postData, $teacherId) {
+        try {
+            // Validate input
+            $name = trim($postData['name'] ?? '');
+            $description = trim($postData['description'] ?? '');
+            $status = $postData['status'] ?? 'active';
+            $selectedStudents = $postData['students'] ?? [];
+            
+            // Basic validation
+            if (empty($name)) {
+                return ['success' => false, 'message' => 'Project name is required'];
+            }
+            
+            if (empty($description)) {
+                return ['success' => false, 'message' => 'Project description is required'];
+            }
+            
+            if (empty($selectedStudents)) {
+                return ['success' => false, 'message' => 'At least one student must be selected'];
+            }
+            
+            // Prepare student IDs JSON
+            $studentIds = json_encode($selectedStudents);
+            
+            // Create project data array
+            $projectData = [
+                'name' => $name,
+                'description' => $description,
+                'status' => $status,
+                'teacher_id' => $teacherId,
+                'student_ids' => $studentIds
+                
+            ];
+            
+            // Create project
+            $projectId = $this->createProject($projectData);
+            
+            if ($projectId) {
+                return [
+                    'success' => true,
+                    'message' => 'Project created successfully',
+                    'project_id' => $projectId
+                ];
+            } else {
+                return ['success' => false, 'message' => 'Failed to create project'];
+            }
+        } catch (Exception $e) {
+            error_log("Error in handleCreateProject: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to create project: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get a single diary entry by ID (teacher can view any student's entry)
+     * 
+     * @param int $entryId The ID of the entry to retrieve
+     * @return array|bool The diary entry data or false if not found
+     */
+    public function getDiaryEntry($entryId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT d.*, 
+                       pg.name as project_name, 
+                       s.name as student_name,
+                       t.name as reviewer_name
+                FROM diary_entries d
+                LEFT JOIN project_groups pg ON d.project_group_id = pg.id
+                LEFT JOIN users s ON d.user_id = s.id
+                LEFT JOIN users t ON d.reviewer_id = t.id
+                WHERE d.id = :entry_id
+            ");
+            $stmt->bindParam(':entry_id', $entryId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Teacher error getting diary entry: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get student details by ID
+     * 
+     * @param int $studentId The ID of the student
+     * @return array|bool The student data or false if not found
+     */
+    public function getStudentById($studentId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id, name, email
+                FROM users
+                WHERE id = :student_id AND role = 'student'
+            ");
+            $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting student details: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get project details by ID (simplified version)
+     * 
+     * @param int $projectId The ID of the project
+     * @return array|bool The project data or false if not found
+     */
+    public function getProjectDetailsById($projectId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT *
+                FROM project_groups
+                WHERE id = :project_id
+            ");
+            $stmt->bindParam(':project_id', $projectId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting project details: " . $e->getMessage());
             return false;
         }
     }

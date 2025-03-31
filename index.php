@@ -1,6 +1,25 @@
 <?php
-// Start session at the beginning
-session_start();
+// Start output buffering
+ob_start();
+
+// Include the database configuration file
+require_once 'config/database.php';
+
+// Get the database connection
+$pdo = getDbConnection();
+
+// Start the session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check for redirect URL in session
+if (isset($_SESSION['redirect_url'])) {
+    $redirectUrl = $_SESSION['redirect_url'];
+    unset($_SESSION['redirect_url']); // Clear it after use
+    header("Location: $redirectUrl");
+    exit;
+}
 
 // Define base path
 define('BASE_PATH', __DIR__);
@@ -17,14 +36,32 @@ $authController = new AuthController($pdo);
 // Check if user is logged in
 $isLoggedIn = isset($_SESSION['user_id']);
 
+// Define $page before using it
+$page = $_GET['page'] ?? 'dashboard';
+
+// Fix all dairy/diary typos at once
+$diaryPages = ['view_diary_entry', 'diary_entries', 'add_diary_entry', 'edit_diary_entry', 'delete_diary_entry'];
+$dairyPages = ['view_dairy_entry', 'dairy_entries', 'add_dairy_entry', 'edit_dairy_entry', 'delete_dairy_entry'];
+
+// Check if the current page is any of the misspelled "dairy" pages
+foreach ($dairyPages as $index => $dairyPage) {
+    if ($page === $dairyPage) {
+        // Redirect to the correctly spelled "diary" page with any parameters
+        $correctPage = $diaryPages[$index];
+        $params = $_GET;
+        unset($params['page']);
+        
+        $queryString = !empty($params) ? '&' . http_build_query($params) : '';
+        header("Location: index.php?page=$correctPage$queryString");
+        exit;
+    }
+}
+
 // If not logged in, redirect to the standalone login.php
 if (!$isLoggedIn && $page != 'login' && $page != 'register') {
     header('Location: login.php');
     exit;
 }
-
-// Basic routing
-$page = isset($_GET['page']) ? $_GET['page'] : 'home';
 
 // Admin routes handling with layout
 if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
@@ -138,7 +175,7 @@ else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'teach
             $contentView = BASE_PATH . '/views/teacher/diary_entries.php';
             break;
         case 'view_diary_entry':
-            $pageTitle = 'View Diary Entry';
+            $pageTitle = 'View Student Diary Entry';
             $contentView = BASE_PATH . '/views/teacher/view_diary_entry.php';
             break;
         case 'teacher_pending_reviews':
@@ -177,6 +214,10 @@ else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'teach
             header('Location: index.php?page=create_project');
             exit;
             break;
+        case 'review_diary_entry':
+            $pageTitle = 'Review Diary Entry';
+            $contentView = BASE_PATH . '/views/teacher/review_diary_entry.php';
+            break;
         case 'logout':
             session_destroy();
             header('Location: index.php?page=login');
@@ -189,6 +230,74 @@ else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'teach
     
     // Include the teacher layout with the content
     include BASE_PATH . '/views/teacher/layout.php';
+    exit; // Stop further execution
+}
+
+// Student routes handling with layout
+else if ($isLoggedIn && isset($_SESSION['role']) && $_SESSION['role'] === 'student') {
+    // Load student controller
+    require_once BASE_PATH . '/controllers/StudentController.php';
+    $studentController = new StudentController($pdo);
+    
+    // Set default page title and content view
+    $pageTitle = 'Student Dashboard';
+    $contentView = BASE_PATH . '/views/student/dashboard.php';
+    
+    // Determine which page to display
+    switch ($page) {
+        case 'dashboard':
+            $pageTitle = 'Student Dashboard';
+            $contentView = BASE_PATH . '/views/student/dashboard.php';
+            break;
+        case 'student_projects':
+            $pageTitle = 'My Projects';
+            $contentView = BASE_PATH . '/views/student/projects.php';
+            break;
+        case 'view_project':
+            $pageTitle = 'Project Details';
+            $contentView = BASE_PATH . '/views/student/view_project.php';
+            break;
+        case 'diary_entries':
+            $pageTitle = 'My Diary Entries';
+            $contentView = BASE_PATH . '/views/student/diary_entries.php';
+            break;
+        case 'view_diary_entry':
+            $pageTitle = 'View Diary Entry';
+            $contentView = BASE_PATH . '/views/student/view_diary_entry.php';
+            break;
+        case 'create_diary_entry':
+            $pageTitle = 'Create Diary Entry';
+            $contentView = BASE_PATH . '/views/student/create_diary_entry.php';
+            break;
+        case 'edit_diary_entry':
+            $pageTitle = 'Edit Diary Entry';
+            $contentView = BASE_PATH . '/views/student/edit_diary_entry.php';
+            break;
+        case 'add_diary_entry':
+            $pageTitle = 'Add Diary Entry';
+            $contentView = BASE_PATH . '/views/student/add_diary_entry.php';
+            break;
+        case 'pending_reviews':
+            $pageTitle = 'Pending Reviews';
+            $contentView = BASE_PATH . '/views/student/pending_reviews.php';
+            break;
+        
+        case 'profile':
+            $pageTitle = 'My Profile';
+            $contentView = BASE_PATH . '/views/student/profile.php';
+            break;
+        case 'settings':
+            $pageTitle = 'Settings';
+            $contentView = BASE_PATH . '/views/student/settings.php';
+            break;
+        case 'logout':
+            session_destroy();
+            header('Location: index.php?page=login');
+            exit;
+    }
+    
+    // Include the layout file which will include the appropriate content view
+    include BASE_PATH . '/views/student/layout.php';
     exit; // Stop further execution
 }
 
@@ -246,4 +355,7 @@ switch ($page) {
 
 // Include footer for non-admin pages
 include BASE_PATH . '/includes/footer.php';
+
+// End output buffering
+ob_end_flush();
 ?>

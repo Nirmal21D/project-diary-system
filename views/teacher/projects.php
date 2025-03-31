@@ -16,12 +16,7 @@ if (isset($_GET['status']) && !empty($_GET['status'])) {
 if (isset($_GET['search']) && !empty($_GET['search'])) {
     $filters['search'] = $_GET['search'];
 }
-if (isset($_GET['date_from']) && !empty($_GET['date_from'])) {
-    $filters['date_from'] = $_GET['date_from'];
-}
-if (isset($_GET['date_to']) && !empty($_GET['date_to'])) {
-    $filters['date_to'] = $_GET['date_to'];
-}
+
 
 // Check for success message in session (from redirect)
 if (isset($_SESSION['success_message'])) {
@@ -147,17 +142,9 @@ $debugInfo = "Teacher ID: " . $teacherId . ", Number of projects: " . count($pro
                            placeholder="Project name or description" value="<?php echo $filters['search'] ?? ''; ?>">
                 </div>
                 
-                <div class="col-md-2">
-                    <label for="date_from" class="form-label">From Date</label>
-                    <input type="date" class="form-control" id="date_from" name="date_from" 
-                           value="<?php echo $filters['date_from'] ?? ''; ?>">
-                </div>
                 
-                <div class="col-md-2">
-                    <label for="date_to" class="form-label">To Date</label>
-                    <input type="date" class="form-control" id="date_to" name="date_to" 
-                           value="<?php echo $filters['date_to'] ?? ''; ?>">
-                </div>
+                
+               
                 
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary me-2">
@@ -195,9 +182,9 @@ $debugInfo = "Teacher ID: " . $teacherId . ", Number of projects: " . count($pro
                                 <th>Name</th>
                                 <th>Description</th>
                                 <th>Students</th>
-                                <th>Department</th>
+                                
                                 <th>Status</th>
-                                <th>Timeline</th>
+            
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -232,9 +219,7 @@ $debugInfo = "Teacher ID: " . $teacherId . ", Number of projects: " . count($pro
                                             </button>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
-                                        <?php echo htmlspecialchars($project['teacher_department'] ?? 'Not specified'); ?>
-                                    </td>
+                                    
                                     <td>
                                         <?php 
                                             $statusClass = '';
@@ -258,12 +243,7 @@ $debugInfo = "Teacher ID: " . $teacherId . ", Number of projects: " . count($pro
                                             <?php echo ucfirst($status); ?>
                                         </span>
                                     </td>
-                                    <td>
-                                        <small>
-                                            <strong>Start:</strong> <?php echo date('M d, Y', strtotime($project['start_date'] ?? 'now')); ?><br>
-                                            <strong>End:</strong> <?php echo date('M d, Y', strtotime($project['end_date'] ?? 'now')); ?>
-                                        </small>
-                                    </td>
+                                    
                                     <td>
                                         <div class="btn-group">
                                             <a href="index.php?page=view_project&id=<?php echo $project['id']; ?>" class="btn btn-sm btn-primary" title="View">

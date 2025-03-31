@@ -40,9 +40,6 @@ if ($teacherId > 0) {
     
     // Get pending reviews
     $pendingReviews = $teacherController->getPendingReviews($teacherId);
-    
-    // Get notifications
-    $notifications = $teacherController->getTeacherNotifications($teacherId);
 }
 ?>
 
@@ -201,32 +198,8 @@ if ($teacherId > 0) {
                 </div>
             </div>
 
-            <!-- Notifications and Quick Actions -->
+            <!-- Quick Actions -->
             <div class="col-xl-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-bell me-1"></i> Notifications
-                    </div>
-                    <div class="card-body">
-                        <?php if (empty($notifications)): ?>
-                            <p class="text-center">No new notifications.</p>
-                        <?php else: ?>
-                            <div class="list-group">
-                                <?php foreach ($notifications as $notification): ?>
-                                    <a href="<?php echo $notification['link'] ?? '#'; ?>" class="list-group-item list-group-item-action">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1"><?php echo htmlspecialchars($notification['title'] ?? 'Notification'); ?></h6>
-                                            <small><?php echo date('M d, g:i a', strtotime($notification['created_at'] ?? 'now')); ?></small>
-                                        </div>
-                                        <p class="mb-1"><?php echo htmlspecialchars($notification['message'] ?? ''); ?></p>
-                                    </a>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
                 <div class="card mb-4">
                     <div class="card-header">
                         <i class="fas fa-tasks me-1"></i> Quick Actions
