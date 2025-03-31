@@ -1,0 +1,257 @@
+:root {
+    --primary: #3498db;
+    --secondary: #2ecc71;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --info: #1abc9c;
+    --dark: #34495e;
+    --light: #ecf0f1;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background: #35424a;
+    color: #ffffff;
+    padding: 10px 0;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+}
+
+nav {
+    margin: 20px 0;
+}
+
+nav a {
+    color: #ffffff;
+    text-decoration: none;
+    padding: 10px 15px;
+}
+
+nav a:hover {
+    background: #e8491d;
+}
+
+.container {
+    width: 80%;
+    margin: auto;
+    overflow: hidden;
+}
+
+footer {
+    background: #35424a;
+    color: #ffffff;
+    text-align: center;
+    padding: 10px 0;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+.main-content {
+    flex: 1;
+}
+
+/* Card styling */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    font-weight: 600;
+    border-bottom: none;
+}
+
+.card-stats {
+    text-align: center;
+    padding: 20px;
+}
+
+.card-stats .value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--primary);
+}
+
+.card-stats .label {
+    font-size: 1rem;
+    color: #777;
+}
+
+/* Dashboard stats cards */
+.stat-card {
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.stat-card-primary { background: linear-gradient(135deg, #3498db, #2980b9); }
+.stat-card-success { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+.stat-card-warning { background: linear-gradient(135deg, #f39c12, #e67e22); }
+.stat-card-danger  { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+.stat-card .card-body {
+    padding: 20px;
+    color: white;
+}
+
+.stat-card .stat-icon {
+    font-size: 3rem;
+    opacity: 0.8;
+}
+
+.stat-card .stat-count {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.stat-card .stat-title {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+/* Login and register forms */
+.auth-form {
+    max-width: 450px;
+    margin: 50px auto;
+}
+
+.auth-form .card {
+    padding: 20px;
+}
+
+.auth-form .card-header {
+    background: none;
+    padding-bottom: 0;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.auth-form .card-body {
+    padding: 25px;
+}
+
+.auth-form .form-control {
+    border-radius: 8px;
+    padding: 12px;
+}
+
+/* Tables */
+.table-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.table th, .table td {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table th {
+    background-color: #35424a;
+    color: white;
+}
+
+.notification {
+    background-color: #e7f3fe;
+    color: #31708f;
+    padding: 10px;
+    margin: 10px 0;
+    border-left: 6px solid #31708f;
+}
+
+.button {
+    background-color: #35424a;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #e8491d;
+}
+
+/* Sidebar (for admin/teacher dashboards) */
+.sidebar {
+    height: 100%;
+    width: 250px;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transition: all 0.3s;
+}
+
+.sidebar .nav-link {
+    color: #555;
+    padding: 12px 20px;
+    border-left: 3px solid transparent;
+}
+
+.sidebar .nav-link:hover {
+    background-color: #f8f9fa;
+    border-left-color: var(--primary);
+}
+
+.sidebar .nav-link.active {
+    color: var(--primary);
+    background-color: #e9f2fa;
+    border-left-color: var(--primary);
+    font-weight: 600;
+}
+
+.sidebar .nav-link i {
+    margin-right: 10px;
+}
+
+.sidebar-collapsed {
+    width: 70px;
+}
+
+.content-with-sidebar {
+    margin-left: 250px;
+    transition: all 0.3s;
+}
+
+.content-with-sidebar.sidebar-collapsed {
+    margin-left: 70px;
+}

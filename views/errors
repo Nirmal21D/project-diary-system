@@ -1,0 +1,20 @@
+\403.php
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Access Denied</h4>
+                </div>
+                <div class="card-body text-center">
+                    <h1 class="display-1 text-danger">403</h1>
+                    <p class="lead">You don't have permission to access this page.</p>
+                    <p>Please contact an administrator if you believe this is an error.</p>
+                    <a href="index.php?page=dashboard" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Return to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

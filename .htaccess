@@ -1,0 +1,16 @@
+# .htaccess
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect to the index.php for all requests
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [L]
+
+    # Prevent access to sensitive files
+    <FilesMatch "\.(env|ini|log|txt|md)$">
+        Order Allow,Deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
